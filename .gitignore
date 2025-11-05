@@ -1,0 +1,39 @@
+# --- Python Bytecode & Cache ---
+__pycache__/
+*.pyc
+
+# --- Virtual Environment ---
+# (Add your venv name if it's different)
+pro/
+.pro/
+env/
+*.env
+
+# --- Generated Project Files ---
+# These folders are from your screenshot
+.dist/
+data/
+plots/
+
+# --- Common Python Build Artifacts ---
+build/
+*.egg-info
+
+# --- Secrets & API Keys ---
+# Never commit your API keys!
+.env
+secrets.py
+config.ini
+
+# --- OS & IDE Specific ---
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
