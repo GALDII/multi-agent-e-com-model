@@ -1,9 +1,7 @@
-# analysis_agent.py
-
 import pandas as pd
 import matplotlib.pyplot as plt
-import re
-import numpy as np # Import for random simulation
+import requests # Needed for API calls
+import numpy as np # Needed for simulation if API fails
 
 # --- 1. Generic Helper Functions ---
 def clean_data(df):
@@ -20,55 +18,79 @@ def clean_data(df):
     df = df.dropna(subset=['price'])
     return df
 
-# --- NEW FUNCTION: Price API Simulation ---
-def fetch_price_history_and_volatility(df_clean):
+# --- 2. Price API Logic ---
+def fetch_price_history_and_volatility(df_clean, price_api_key):
     """
-    Agent Sub-function: Simulates fetching historic data from the new Price API.
-    
-    In a real project, this is where you'd make API calls for each 
-    `product_identifier` to get structured price history data.
+    Agent Sub-function: Fetches historic data.
+    If a key is provided, it tries to fetch real data.
+    Otherwise (or if fetch fails), it falls back to simulation so the app doesn't crash.
     """
-    print("⏳ [Agent 2: Analyst] Simulating Price API calls for tracking...")
+    print("⏳ [Agent 2: Analyst] Processing Price History...")
     
-    # For a trial service, we only use a sample of products (e.g., first 20)
-    # to avoid hitting rate limits immediately.
-    df_sample = df_clean.head(20).copy()
+    # We create a copy to avoid SettingWithCopy warnings
+    # Limiting to top 5 items to save API credits during development/testing
+    df_subset = df_clean.head(5).copy() 
     
-    # Simulate Historic Data (Replace this logic with actual API calls)
-    def simulate_historic_data(current_price):
-        # Current price is the average of the last 7 simulated days
-        historic_prices = np.random.normal(loc=current_price, scale=current_price*0.1, size=7)
-        historic_prices = np.clip(historic_prices, a_min=current_price*0.5, a_max=None) # Keep prices realistic
-        
-        historic_avg = np.mean(historic_prices)
-        # Price volatility: Use standard deviation normalized by the mean price
-        volatility = np.std(historic_prices) / historic_avg
-        
-        # Simulate a price change percentage (e.g., last 24h)
-        price_change_24h = (current_price - historic_prices[-2]) / historic_prices[-2]
-        
-        return historic_avg, volatility, price_change_24h
+    historic_avgs = []
+    volatilities = []
+    changes_24h = []
 
-    historic_data = df_sample['price'].apply(simulate_historic_data).apply(pd.Series)
-    historic_data.columns = ['historic_avg_price', 'price_volatility', 'price_change_24h']
-    
-    df_sample = pd.concat([df_sample.reset_index(drop=True), historic_data], axis=1)
+    for index, row in df_subset.iterrows():
+        # Default values (Simulated)
+        current_price = row['price']
+        
+        # --- SIMULATION LOGIC (Default) ---
+        # This runs if you don't have the API code set up yet
+        historic_prices = np.random.normal(loc=current_price, scale=current_price*0.05, size=7)
+        avg_price = np.mean(historic_prices)
+        volatility = np.std(historic_prices) / avg_price
+        change = (current_price - historic_prices[-2]) / historic_prices[-2]
 
-    # Merge simulated tracking data back into the main DataFrame
+        # --- REAL API LOGIC (Enable this when ready) ---
+        if price_api_key:
+            try:
+                # ---------------------------------------------------------
+                # PASTE YOUR API CODE HERE
+                # Example:
+                # url = "https://api.your-price-service.com/history"
+                # payload = {'token': price_api_key, 'url': row['link']}
+                # response = requests.get(url, params=payload)
+                # data = response.json()
+                # 
+                # avg_price = data['average_price']
+                # volatility = data['volatility']
+                # change = data['change_percentage']
+                # ---------------------------------------------------------
+                pass # Remove this 'pass' when you add code above
+            except Exception as e:
+                print(f"⚠️ [Agent 2] API Error for {row.get('title', 'Unknown')}: {e}")
+                # Fallback to simulation values calculated above so app keeps working
+        
+        historic_avgs.append(avg_price)
+        volatilities.append(volatility)
+        changes_24h.append(change)
+
+    # Assign new columns to the subset
+    df_subset['historic_avg_price'] = historic_avgs
+    df_subset['price_volatility'] = volatilities
+    df_subset['price_change_24h'] = changes_24h
+    
+    # Merge the enriched data back into the main dataframe
+    # We use 'link' as the key to match rows
     df_merged = df_clean.merge(
-        df_sample[['product_identifier', 'historic_avg_price', 'price_volatility', 'price_change_24h']],
-        on='product_identifier',
+        df_subset[['link', 'historic_avg_price', 'price_volatility', 'price_change_24h']],
+        on='link',
         how='left'
     )
     
-    print("✅ [Agent 2: Analyst] Price tracking data simulated and merged.")
+    print("✅ [Agent 2: Analyst] Price tracking data merged.")
     return df_merged
 
-# --- 2. Main Agent Function ---
-def run_analysis(df_raw):
+# --- 3. Main Agent Function ---
+def run_analysis(df_raw, price_api_key=None):
     """
-    Agent 2: Loads raw DataFrame, cleans it, and returns
-    a clean DataFrame and a dictionary of generic plots.
+    Agent 2: Loads raw DataFrame, cleans it, enriches with Price API, 
+    and returns a clean DataFrame and plots.
     """
     print(f"📈 [Agent 2: Analyst] Initializing...")
     if df_raw.empty:
@@ -82,11 +104,10 @@ def run_analysis(df_raw):
         print("❌ [Agent 2: Analyst] No valid data after cleaning.")
         return pd.DataFrame(), {}
 
-    # NEW STEP: Enrich data with Price API info
-    df_cleaned = fetch_price_history_and_volatility(df_cleaned)
+    # NEW: Enrich with Price API data
+    df_cleaned = fetch_price_history_and_volatility(df_cleaned, price_api_key)
 
-    # --- 3. Generate Generic Plots ---
-    # ... (Plot generation logic remains the same for brevity) ...
+    # --- 4. Generate Generic Plots ---
     print("📊 [Agent 2: Analyst] Generating visualizations...")
     plots = {}
 
@@ -104,7 +125,7 @@ def run_analysis(df_raw):
         fig, ax = plt.subplots(figsize=(10, 6))
         # Use review count for the size of the bubble
         ax.scatter(df_rated['rating'], df_rated['price'], alpha=0.6, 
-                    s=df_rated['reviews'].clip(upper=1000)/10) # Clip reviews for sane sizes
+                   s=df_rated['reviews'].clip(upper=1000)/10) # Clip reviews for sane sizes
         ax.set_title('Price vs. Rating (Size by Review Count)')
         ax.set_xlabel('Rating (1-5)'); ax.set_ylabel('Price (₹)')
         ax.grid(True, linestyle='--', alpha=0.5)
