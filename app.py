@@ -1,3 +1,5 @@
+# app.py 
+
 import streamlit as st
 from agents.scraper_agent import run_scraper
 from agents.analysis_agent import run_analysis
@@ -6,11 +8,7 @@ from agents.comparison_agent import run_comparison
 import pandas as pd
 
 # --- 1. Page Configuration ---
-st.set_page_config(
-    page_title="Multi-Agent Product Analyzer",
-    page_icon="🤖",
-    layout="wide"
-)
+# ... (No change) ...
 
 # --- 2. Session State Initialization ---
 if 'ran_analysis' not in st.session_state:
@@ -20,11 +18,13 @@ if 'ran_analysis' not in st.session_state:
     st.session_state.plots = {}
     st.session_state.cheapest_df = pd.DataFrame()
     st.session_state.seller_report_df = pd.DataFrame()
+    st.session_state.historic_report_df = pd.DataFrame() # NEW
     st.session_state.deals_df = pd.DataFrame()
     st.session_state.importance_df = pd.DataFrame()
 
 # --- 3. Sidebar (for Inputs) ---
 with st.sidebar:
+    # ... (Input logic remains the same) ...
     st.title("🤖 Multi-Agent Analyzer")
     st.info("This app uses a team of AI agents to scrape, analyze, and model product data from the web.")
     
@@ -47,8 +47,8 @@ with st.sidebar:
             else:
                 st.success("Agent 1: Scraping complete!")
 
-                # --- Run Agent 2: Analyst ---
-                with st.spinner("📈 Agent 2: Analyzing and plotting..."):
+                # --- Run Agent 2: Analyst (Now includes Price API call simulation) ---
+                with st.spinner("📈 Agent 2: Analyzing and plotting (and calling Price API)..."):
                     st.session_state.clean_data, st.session_state.plots = \
                         run_analysis(st.session_state.raw_data)
                 st.success("Agent 2: Analysis complete!")
@@ -59,9 +59,9 @@ with st.sidebar:
                         run_prediction(st.session_state.clean_data)
                 st.success("Agent 3: Prediction complete!")
                 
-                # --- Run Agent 4: Comparator ---
+                # --- Run Agent 4: Comparator (Now returns a new report) ---
                 with st.spinner("🔄 Agent 4: Comparing prices..."):
-                    st.session_state.cheapest_df, st.session_state.seller_report_df = \
+                    st.session_state.cheapest_df, st.session_state.seller_report_df, st.session_state.historic_report_df = \
                         run_comparison(st.session_state.clean_data)
                 st.success("Agent 4: Comparison complete!")
                 
@@ -75,18 +75,20 @@ if not st.session_state.ran_analysis:
     st.info("Enter your API key and a product query in the sidebar to start the analysis.")
 else:
     # --- Create Tabs for Each Agent's Output ---
-    tab_compare, tab_deals, tab_analysis, tab_model, tab_data = st.tabs([
-        "💰 Price Reports (Agent 4)",
-        "💎 Potential Deals (Agent 3)",
-        "📊 Market Analysis (Agent 2)",
-        "🧠 Model Insights (Agent 3)",
-        "🗃️ Raw Data (Agent 1)"
+    # ADDED a new tab: Price History
+    tab_compare, tab_history, tab_deals, tab_analysis, tab_model, tab_data = st.tabs([
+        "💰 Cheapest Listings",
+        "📈 **Price History Deal**", # Highlight the new feature!
+        "💎 Potential Deals (AI)",
+        "📊 Market Analysis",
+        "🧠 Model Insights",
+        "🗃️ Raw Data"
     ])
 
     # --- Tab 1: Comparison Reports ---
     with tab_compare:
-        st.header("Top 10 Cheapest Listings")
-        st.info("Agent 4 found the 10 cheapest listings for your search query.")
+        st.header("Top 10 Cheapest Listings (Snapshot)")
+        st.info("Agent 4 found the 10 cheapest listings for your search query today.")
         if not st.session_state.cheapest_df.empty:
             st.dataframe(st.session_state.cheapest_df.style.format({'price': '₹{:,.2f}'}), use_container_width=True)
         else:
@@ -101,7 +103,25 @@ else:
         else:
             st.warning("Could not generate seller report.")
 
-    # --- Tab 2: Potential Deals ---
+    # --- NEW Tab 2: Price History Deals ---
+    with tab_history:
+        st.header("Best Deals Based on Historical Prices")
+        st.markdown("**This uses your Price API trial service** (simulated here) to compare the current price against its own historical average.")
+        
+        if not st.session_state.historic_report_df.empty:
+            st.dataframe(st.session_state.historic_report_df.style.format({
+                'price': '₹{:,.2f}', 
+                'historic_avg_price': '₹{:,.2f}', 
+                'historical_saving_%': '{:.1f}%', 
+                '24h_price_change_%': '{:+.1f}%',
+                'price_volatility': '{:.2f}'
+            }), use_container_width=True)
+        else:
+            st.warning("Price history report could not be generated (no data for Price API calls).")
+
+
+    # --- Remaining Tabs (3, 4, 5, 6) ---
+    # Tab 3: Potential Deals (Agent 3) - Remains the same
     with tab_deals:
         st.header("Potential Deals Based on AI Prediction")
         st.info("Agent 3 built a model to predict a 'fair' price. A high 'price_difference' suggests a good deal (actual price is much lower than predicted).")
@@ -112,7 +132,7 @@ else:
         else:
             st.warning("Could not generate a deals report.")
 
-    # --- Tab 3: Market Analysis ---
+    # Tab 4: Market Analysis (Agent 2) - Remains the same
     with tab_analysis:
         st.header("Market Analysis Plots")
         st.info("Agent 2 created these plots to understand the market landscape.")
@@ -124,7 +144,7 @@ else:
         if st.session_state.plots.get('top_sellers_bar'):
             st.pyplot(st.session_state.plots.get('top_sellers_bar'))
 
-    # --- Tab 4: Model Insights ---
+    # Tab 5: Model Insights (Agent 3) - Remains the same
     with tab_model:
         st.header("Key Price Drivers (Feature Importance)")
         st.info("Agent 3's model found these features to be the most important for predicting price.")
@@ -133,7 +153,7 @@ else:
         else:
             st.warning("Could not determine feature importances.")
 
-    # --- Tab 5: Raw Data ---
+    # Tab 6: Raw Data (Agent 1) - Remains the same
     with tab_data:
         st.header("Raw Scraped Data")
         st.info("This is the raw, unprocessed data from Agent 1 (the scraper).")

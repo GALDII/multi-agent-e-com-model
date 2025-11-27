@@ -1,9 +1,12 @@
+# scraper_agent.py
+
 import serpapi
 import pandas as pd
 
 def run_scraper(product_query, api_key):
     """
     Agent 1: Scrapes Google Shopping data and returns a DataFrame.
+    Modified to also look for a common unique ID or just use the link as ID.
     """
     print(f"🕵️ [Agent 1: Scraper] Initializing... Searching for '{product_query}'")
     params = {
@@ -24,10 +27,15 @@ def run_scraper(product_query, api_key):
         products_data = []
         for item in shopping_results:
             products_data.append({
-                'title': item.get('title'), 'price': item.get('price'),
-                'seller': item.get('source'), 'rating': item.get('rating'),
-                'reviews': item.get('reviews'), 'link': item.get('link'),
-                'delivery': item.get('delivery')
+                'title': item.get('title'), 
+                'price': item.get('price'),
+                'seller': item.get('source'), 
+                'rating': item.get('rating'),
+                'reviews': item.get('reviews'), 
+                'link': item.get('link'),
+                'delivery': item.get('delivery'),
+                # New: Use link as a unique product identifier for the Price API
+                'product_identifier': item.get('link') 
             })
             
         if not products_data:
