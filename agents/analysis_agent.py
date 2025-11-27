@@ -49,19 +49,14 @@ def fetch_price_history_and_volatility(df_clean, price_api_key):
         # --- REAL API LOGIC (Enable this when ready) ---
         if price_api_key:
             try:
-                # ---------------------------------------------------------
-                # PASTE YOUR API CODE HERE
-                # Example:
-                # url = "https://api.your-price-service.com/history"
-                # payload = {'token': price_api_key, 'url': row['link']}
-                # response = requests.get(url, params=payload)
-                # data = response.json()
-                # 
-                # avg_price = data['average_price']
-                # volatility = data['volatility']
-                # change = data['change_percentage']
-                # ---------------------------------------------------------
-                pass # Remove this 'pass' when you add code above
+                url = "https://serpapi.com/search.json"
+                payload = {'token': price_api_key, 'url': row['link']}
+                response = requests.get(url, params=payload)
+                data = response.json()
+                 
+                avg_price = data['average_price']
+                volatility = data['volatility']
+                change = data['change_percentage']
             except Exception as e:
                 print(f"⚠️ [Agent 2] API Error for {row.get('title', 'Unknown')}: {e}")
                 # Fallback to simulation values calculated above so app keeps working

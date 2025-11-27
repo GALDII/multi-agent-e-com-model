@@ -3,3 +3,4 @@ matplotlib
 serpapi
 scikit-learn
 streamlit
+requests
