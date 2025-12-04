@@ -1,5 +1,3 @@
-# scraper_agent.py
-
 import serpapi
 import pandas as pd
 
@@ -34,7 +32,6 @@ def run_scraper(product_query, api_key):
                 'reviews': item.get('reviews'), 
                 'link': item.get('link'),
                 'delivery': item.get('delivery'),
-                # New: Use link as a unique product identifier for the Price API
                 'product_identifier': item.get('link') 
             })
             
