@@ -4,12 +4,16 @@ import pandas as pd
 def run_scraper(product_query, api_key):
     """
     Agent 1: Scrapes Google Shopping data and returns a DataFrame.
-    Modified to also look for a common unique ID or just use the link as ID.
+    Returns 'source' column for display and 'seller' as alias for ML model.
     """
     print(f"🕵️ [Agent 1: Scraper] Initializing... Searching for '{product_query}'")
     params = {
-        "engine": "google_shopping", "q": product_query, "api_key": api_key,
-        "google_domain": "google.co.in", "gl": "in", "hl": "en"
+        "engine": "google_shopping", 
+        "q": product_query, 
+        "api_key": api_key,
+        "google_domain": "google.co.in", 
+        "gl": "in", 
+        "hl": "en"
     }
     
     try:
@@ -18,30 +22,31 @@ def run_scraper(product_query, api_key):
         if "shopping_results" not in results:
             print("❌ [Agent 1: Scraper] No shopping results found.")
             return pd.DataFrame()
-
         shopping_results = results["shopping_results"]
         print(f"✅ [Agent 1: Scraper] Found {len(shopping_results)} products.")
         
         products_data = []
         for item in shopping_results:
+            source_value = item.get('source', 'Unknown')
             products_data.append({
                 'title': item.get('title'), 
                 'price': item.get('price'),
-                'seller': item.get('source'), 
+                'source': source_value,  # For display in UI
+                'seller': source_value,  # For ML model compatibility
                 'rating': item.get('rating'),
                 'reviews': item.get('reviews'), 
                 'link': item.get('link'),
                 'delivery': item.get('delivery'),
-                'product_identifier': item.get('link') 
+                'product_id': item.get('product_id', item.get('link'))
             })
             
         if not products_data:
             print("❌ [Agent 1: Scraper] No data was extracted.")
             return pd.DataFrame()
             
-        print(f"✅ [Agent 1: Scraper] Data successfully scraped.")
-        return pd.DataFrame(products_data)
-
+        df = pd.DataFrame(products_data)
+        print(f"✅ [Agent 1: Scraper] Data successfully scraped. Columns: {df.columns.tolist()}")
+        return df
     except Exception as e:
         print(f"❌ [Agent 1: Scraper] An error occurred: {e}")
         return pd.DataFrame()

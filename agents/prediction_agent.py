@@ -8,13 +8,18 @@ from sklearn.impute import SimpleImputer
 
 def run_prediction(df_clean):
     """
-    Agent 3: Loads clean data, builds a GENERIC price prediction model,
+    Agent 3: Loads clean data, builds a price prediction model,
     and returns feature importance and potential deals DataFrames.
     """
     print(f"🤖 [Agent 3: Predictor] Initializing...")
     
+    # Ensure both 'source' and 'seller' columns exist
+    if 'source' in df_clean.columns and 'seller' not in df_clean.columns:
+        df_clean['seller'] = df_clean['source']
+    elif 'seller' in df_clean.columns and 'source' not in df_clean.columns:
+        df_clean['source'] = df_clean['seller']
+    
     # --- 1. Use Generic Features ---
-    # We predict price based on who is selling it and its reputation
     features = ['seller', 'rating', 'reviews']
     target = 'price'
 
@@ -74,19 +79,40 @@ def run_prediction(df_clean):
             'importance': importances
         }).sort_values(by='importance', ascending=False)
         
-        # We only care about the top 15 most important features
         feature_importance_df = feature_importance_df.head(15)
 
-    except Exception:
+    except Exception as e:
+        print(f"⚠️ [Agent 3: Predictor] Feature importance extraction failed: {e}")
         feature_importance_df = pd.DataFrame(columns=['feature', 'importance'])
 
-    # --- 5. Find Deals (this logic is still valid and useful) ---
-    predictions = model.predict(X)
-    df_model['predicted_price'] = predictions
-    df_model['price_difference'] = df_model['predicted_price'] - df_model['price']
+    # --- 5. Find Deals ---
+    try:
+        predictions = model.predict(X)
+        df_model['predicted_price'] = predictions
+        df_model['price_difference'] = df_model['predicted_price'] - df_model['price']
+        
+        # Ensure 'source' column exists in deals_df
+        deals_df = df_model.sort_values(by='price_difference', ascending=False).copy()
+        
+        # Select columns safely - use what's available
+        cols_to_include = ['title', 'price', 'predicted_price', 'price_difference']
+        
+        # Add source column
+        if 'source' in deals_df.columns:
+            cols_to_include.append('source')
+        elif 'seller' in deals_df.columns:
+            deals_df['source'] = deals_df['seller']
+            cols_to_include.append('source')
+        
+        # Add link if available
+        if 'link' in deals_df.columns:
+            cols_to_include.append('link')
+        
+        deals_df = deals_df[cols_to_include]
+        
+        print(f"✅ [Agent 3: Predictor] Generated {len(deals_df)} predictions. Columns: {deals_df.columns.tolist()}")
+    except Exception as e:
+        print(f"❌ [Agent 3: Predictor] Deal generation failed: {e}")
+        deals_df = pd.DataFrame(columns=['title', 'price', 'predicted_price', 'price_difference', 'source'])
     
-    deals_df = df_model.sort_values(by='price_difference', ascending=False)
-    deals_df = deals_df[['title', 'seller', 'price', 'predicted_price', 'price_difference', 'link']]
-    
-    print("✅ [Agent 3: Predictor] Predictions and importances generated.")
     return feature_importance_df, deals_df
