@@ -1,15 +1,38 @@
 import streamlit as st
 import pandas as pd
 import time
+import sys
+from pathlib import Path
 
-# --- Import Custom Modules ---
+# Add the project root to the Python path
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
+
+# --- Import Custom Modules with Better Error Handling ---
 try:
     from agents.scraper_agent import run_scraper
     from agents.analysis_agent import run_analysis
     from agents.prediction_agent import run_prediction
     from agents.comparison_agent import run_comparison
-except ImportError:
-    st.error("Agent modules not found. Ensure you are running this from the root directory.")
+    AGENTS_LOADED = True
+except ImportError as e:
+    st.error(f"⚠️ Agent modules not found: {e}")
+    st.info("""
+    **Please ensure your directory structure looks like this:**
+    ```
+    your_project/
+    ├── app.py
+    └── agents/
+        ├── __init__.py
+        ├── scraper_agent.py
+        ├── analysis_agent.py
+        ├── prediction_agent.py
+        └── comparison_agent.py
+    ```
+    
+    **Quick fix:** Create an empty `__init__.py` file in the agents folder.
+    """)
+    AGENTS_LOADED = False
 
 # --- 1. Page Configuration & Custom CSS ---
 st.set_page_config(
@@ -215,12 +238,6 @@ st.markdown("""
         color: white;
     }
     
-    /* Dataframes */
-    .dataframe {
-        border-radius: 10px;
-        overflow: hidden;
-    }
-    
     /* Status Container */
     div[data-testid="stStatus"] {
         background: white;
@@ -345,53 +362,60 @@ with st.sidebar:
     st.markdown("🤖 **4 AI Agents** Active")
     st.markdown("⚡ **Real-time** Analysis")
     st.markdown("🎯 **ML-Powered** Predictions")
-    
     st.markdown("---")
     
+    # Run pipeline on button click
     if st.button("🚀 Deploy Intelligence System"):
-        st.session_state.ran_analysis = False 
-        
-        if not api_key:
+        if not AGENTS_LOADED:
+            st.error("❌ Cannot run: Agent modules not loaded. Please check the error message above.")
+        elif not api_key:
             st.error("🔒 API Key Required")
             st.info("Get your free key at serpapi.com")
         elif not product_query:
             st.warning("⚠️ Enter a product to analyze")
         else:
             with st.status("🎯 Deploying Multi-Agent System...", expanded=True) as status:
-                
-                # Agent 1
-                st.write("🕵️ **Scraper Agent** • Scanning 100+ marketplaces...")
-                time.sleep(0.5)
-                st.session_state.raw_data = run_scraper(product_query, api_key)
-                if st.session_state.raw_data.empty:
-                    status.update(label="❌ Scraping Failed", state="error")
-                    st.stop()
-                st.write("✅ Retrieved live market data")
-                
-                # Agent 2
-                st.write("📊 **Analysis Agent** • Processing price trends...")
-                time.sleep(0.5)
-                st.session_state.clean_data, st.session_state.plots = \
-                    run_analysis(st.session_state.raw_data, price_api_key)
-                st.write("✅ Market analysis complete")
-                
-                # Agent 3
-                st.write("🧠 **Prediction Agent** • Training neural networks...")
-                time.sleep(0.5)
-                st.session_state.importance_df, st.session_state.deals_df = \
-                    run_prediction(st.session_state.clean_data)
-                st.write("✅ Price models optimized")
-                
-                # Agent 4
-                st.write("⚖️ **Comparison Agent** • Benchmarking sellers...")
-                time.sleep(0.5)
-                st.session_state.cheapest_df, st.session_state.seller_report_df, st.session_state.historic_report_df = \
-                    run_comparison(st.session_state.clean_data)
-                
-                status.update(label="✨ Intelligence Report Ready", state="complete", expanded=False)
-            
-            st.session_state.ran_analysis = True
-            st.balloons()
+                try:
+                    # Agent 1
+                    st.write("🕵️ **Scraper Agent** • Scanning 100+ marketplaces...")
+                    time.sleep(0.5)
+                    st.session_state.raw_data = run_scraper(product_query, api_key)
+                    if st.session_state.raw_data.empty:
+                        status.update(label="❌ Scraping Failed", state="error")
+                        st.error("No products found. Try a different search query.")
+                        st.session_state.ran_analysis = False
+                        st.stop()
+                    st.write("✅ Retrieved live market data")
+                    
+                    # Agent 2
+                    st.write("📊 **Analysis Agent** • Processing price trends...")
+                    time.sleep(0.5)
+                    st.session_state.clean_data, st.session_state.plots = \
+                        run_analysis(st.session_state.raw_data, price_api_key)
+                    st.write("✅ Market analysis complete")
+                    
+                    # Agent 3
+                    st.write("🧠 **Prediction Agent** • Training neural networks...")
+                    time.sleep(0.5)
+                    st.session_state.importance_df, st.session_state.deals_df = \
+                        run_prediction(st.session_state.clean_data)
+                    st.write("✅ Price models optimized")
+                    
+                    # Agent 4
+                    st.write("⚖️ **Comparison Agent** • Benchmarking sellers...")
+                    time.sleep(0.5)
+                    st.session_state.cheapest_df, st.session_state.seller_report_df, st.session_state.historic_report_df = \
+                        run_comparison(st.session_state.clean_data)
+                    
+                    status.update(label="✨ Intelligence Report Ready", state="complete", expanded=False)
+                    st.session_state.ran_analysis = True
+                    st.balloons()
+                    
+                except Exception as e:
+                    status.update(label="❌ Analysis Failed", state="error")
+                    st.error(f"Error during analysis: {str(e)}")
+                    st.exception(e)
+                    st.session_state.ran_analysis = False
 
 # --- 4. Main Dashboard ---
 
@@ -538,7 +562,7 @@ else:
         avg_price = st.session_state.clean_data['price'].mean()
         total_items = len(st.session_state.clean_data)
         best_deal_gap = st.session_state.deals_df.iloc[0]['price_difference'] if not st.session_state.deals_df.empty else 0
-    except:
+    except Exception:
         min_price, avg_price, total_items, best_deal_gap = 0, 0, 0, 0
 
     kpi1.metric("💰 Lowest Price", f"₹{min_price:,.0f}")
@@ -589,8 +613,12 @@ else:
             st.markdown("### 📋 All Recommended Deals")
             st.caption("Sorted by potential savings (highest first)")
             
+            # Safely select columns that exist
+            available_cols = ['title', 'price', 'predicted_price', 'price_difference', 'source']
+            display_cols = [col for col in available_cols if col in st.session_state.deals_df.columns]
+            
             st.dataframe(
-                st.session_state.deals_df[['title', 'price', 'predicted_price', 'price_difference', 'source']].head(20),
+                st.session_state.deals_df[display_cols].head(20),
                 use_container_width=True,
                 column_config={
                     "title": st.column_config.TextColumn("Product", width="large"),
@@ -696,9 +724,9 @@ else:
                 This helps identify what really drives value in this product category.
                 """)
         else:
-            st.info("Feature analysis requires sufficient data variance")
+            st.info("Feature importance data not available")
 
-    # --- Tab 4: History ---
+    # --- Tab 4: Historical Data ---
     with tab_history:
         st.markdown("### 📈 Historical Price Tracking")
         st.caption("Price evolution over time (requires Price API integration)")
@@ -722,4 +750,28 @@ else:
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.info("📌 Historical data not available. To enable this feature, provide a Price API")
+            st.info("📌 Historical data not available. To enable this feature, provide a Price API key in the sidebar.")
+
+    # --- Tab 5: Raw Data ---
+    with tab_data:
+        st.markdown("### 🗄️ Complete Dataset")
+        st.caption("All scraped and processed data for further analysis")
+        
+        if not st.session_state.clean_data.empty:
+            st.dataframe(
+                st.session_state.clean_data,
+                use_container_width=True,
+                height=500
+            )
+            
+            # Download button
+            csv = st.session_state.clean_data.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Dataset as CSV",
+                data=csv,
+                file_name=f"nexus_ai_{product_query.replace(' ', '_')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        else:
+            st.warning("No data available to display")

@@ -1,41 +1,63 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import requests
 import numpy as np
+try:
+    import requests
+except ImportError:
+    print("❌ requests library not found. Installing...")
+    import subprocess
+    import sys
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "requests"])
+    import requests
 
-# --- 1. Generic Helper Functions ---
 def clean_data(df):
     """Cleans the price, reviews, and rating columns."""
-    df['price'] = df['price'].astype(str).str.replace(r'[₹,]', '', regex=True)
+    if df.empty:
+        return df
+    
+    # Clean price column
+    df['price'] = df['price'].astype(str).str.replace(r'[₹,$,]', '', regex=True)
     df['price'] = pd.to_numeric(df['price'], errors='coerce')
     
+    # Clean reviews column
     df['reviews'] = df['reviews'].astype(str).str.replace(r',', '', regex=True)
     df['reviews'] = pd.to_numeric(df['reviews'], errors='coerce').fillna(0).astype(int)
     
+    # Clean rating column
     df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
     
-    # Drop any rows where price is missing
+    # Drop rows where price is missing or invalid
     df = df.dropna(subset=['price'])
+    df = df[df['price'] > 0]  # Remove zero or negative prices
     
     # Ensure both 'source' and 'seller' columns exist
     if 'source' in df.columns and 'seller' not in df.columns:
         df['seller'] = df['source']
     elif 'seller' in df.columns and 'source' not in df.columns:
         df['source'] = df['seller']
+    elif 'source' not in df.columns and 'seller' not in df.columns:
+        df['source'] = 'Unknown'
+        df['seller'] = 'Unknown'
+    
+    # Ensure link column exists
+    if 'link' not in df.columns:
+        df['link'] = ''
     
     return df
 
-# --- 2. Price API Logic ---
 def fetch_price_history_and_volatility(df_clean, price_api_key):
     """
     Agent Sub-function: Fetches historic data.
     If a key is provided, it tries to fetch real data.
-    Otherwise (or if fetch fails), it falls back to simulation.
+    Otherwise, it falls back to simulation.
     """
     print("⏳ [Agent 2: Analyst] Processing Price History...")
     
+    if df_clean.empty:
+        return df_clean
+    
     # Limiting to top 5 items to save API credits
-    df_subset = df_clean.head(5).copy() 
+    df_subset = df_clean.head(min(5, len(df_clean))).copy()
     
     historic_avgs = []
     volatilities = []
@@ -45,13 +67,20 @@ def fetch_price_history_and_volatility(df_clean, price_api_key):
         current_price = row['price']
         
         # --- SIMULATION LOGIC (Default) ---
-        historic_prices = np.random.normal(loc=current_price, scale=current_price*0.05, size=7)
+        # Generate simulated historical prices with some variance
+        historic_prices = np.random.normal(
+            loc=current_price, 
+            scale=current_price*0.05, 
+            size=7
+        )
+        historic_prices = np.maximum(historic_prices, current_price * 0.7)  # Floor at 70% of current
+        
         avg_price = np.mean(historic_prices)
-        volatility = np.std(historic_prices) / avg_price if avg_price > 0 else 0
-        change = (current_price - historic_prices[-2]) / historic_prices[-2] if historic_prices[-2] > 0 else 0
+        volatility = (np.std(historic_prices) / avg_price * 100) if avg_price > 0 else 0
+        change = ((current_price - historic_prices[-2]) / historic_prices[-2] * 100) if historic_prices[-2] > 0 else 0
 
         # --- REAL API LOGIC (Enable when ready) ---
-        if price_api_key:
+        if price_api_key and row.get('link'):
             try:
                 url = "https://serpapi.com/search.json"
                 payload = {'token': price_api_key, 'url': row['link']}
@@ -65,12 +94,12 @@ def fetch_price_history_and_volatility(df_clean, price_api_key):
                 if 'change_percentage' in data:
                     change = data['change_percentage']
             except Exception as e:
-                print(f"⚠️ [Agent 2] API Error for {row.get('title', 'Unknown')}: {e}")
+                print(f"⚠️ [Agent 2] API Error for {row.get('title', 'Unknown')[:30]}: {e}")
                 # Keep simulation values
         
-        historic_avgs.append(avg_price)
-        volatilities.append(volatility)
-        changes_24h.append(change)
+        historic_avgs.append(round(avg_price, 2))
+        volatilities.append(round(volatility, 2))
+        changes_24h.append(round(change, 2))
 
     # Assign new columns to the subset
     df_subset['historic_avg_price'] = historic_avgs
@@ -87,19 +116,19 @@ def fetch_price_history_and_volatility(df_clean, price_api_key):
     print("✅ [Agent 2: Analyst] Price tracking data merged.")
     return df_merged
 
-# --- 3. Main Agent Function ---
 def run_analysis(df_raw, price_api_key=None):
     """
     Agent 2: Loads raw DataFrame, cleans it, enriches with Price API, 
     and returns a clean DataFrame and plots.
     """
     print(f"📈 [Agent 2: Analyst] Initializing...")
+    
     if df_raw.empty:
         print("❌ [Agent 2: Analyst] No data to analyze.")
         return pd.DataFrame(), {}
         
     df_cleaned = clean_data(df_raw.copy())
-    print("🧹 [Agent 2: Analyst] Data cleaning complete.")
+    print(f"🧹 [Agent 2: Analyst] Data cleaning complete. {len(df_cleaned)} valid products.")
 
     if df_cleaned.empty:
         print("❌ [Agent 2: Analyst] No valid data after cleaning.")
@@ -108,7 +137,7 @@ def run_analysis(df_raw, price_api_key=None):
     # Enrich with Price API data
     df_cleaned = fetch_price_history_and_volatility(df_cleaned, price_api_key)
 
-    # --- 4. Generate Generic Plots ---
+    # --- Generate Visualizations ---
     print("📊 [Agent 2: Analyst] Generating visualizations...")
     plots = {}
 
@@ -127,10 +156,11 @@ def run_analysis(df_raw, price_api_key=None):
 
     # B. Price vs. Rating Scatter
     df_rated = df_cleaned.dropna(subset=['rating'])
-    if not df_rated.empty:
+    if not df_rated.empty and len(df_rated) > 0:
         try:
             fig, ax = plt.subplots(figsize=(10, 6))
             scatter_sizes = df_rated['reviews'].clip(upper=1000) / 10
+            scatter_sizes = scatter_sizes.fillna(20)  # Default size for missing values
             ax.scatter(df_rated['rating'], df_rated['price'], alpha=0.6, 
                       s=scatter_sizes, c='#764ba2', edgecolors='white', linewidth=0.5)
             ax.set_title('Price vs. Rating (Size by Review Count)', fontsize=14, fontweight='bold')
@@ -148,12 +178,13 @@ def run_analysis(df_raw, price_api_key=None):
         try:
             fig, ax = plt.subplots(figsize=(10, 7))
             seller_counts = df_cleaned[seller_col].value_counts().nlargest(15).sort_values()
-            seller_counts.plot(kind='barh', ax=ax, color='#667eea')
-            ax.set_title('Top 15 Sellers by Number of Listings', fontsize=14, fontweight='bold')
-            ax.set_xlabel('Number of Listings', fontsize=12)
-            ax.grid(axis='x', linestyle='--', alpha=0.5)
-            plt.tight_layout()
-            plots['top_sellers_bar'] = fig
+            if not seller_counts.empty:
+                seller_counts.plot(kind='barh', ax=ax, color='#667eea')
+                ax.set_title('Top 15 Sellers by Number of Listings', fontsize=14, fontweight='bold')
+                ax.set_xlabel('Number of Listings', fontsize=12)
+                ax.grid(axis='x', linestyle='--', alpha=0.5)
+                plt.tight_layout()
+                plots['top_sellers_bar'] = fig
         except Exception as e:
             print(f"⚠️ [Agent 2: Analyst] Bar chart generation failed: {e}")
     
