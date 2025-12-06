@@ -3,4 +3,5 @@ matplotlib
 serpapi
 scikit-learn
 streamlit
-requests
+requests    
+groq

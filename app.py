@@ -14,6 +14,7 @@ try:
     from agents.analysis_agent import run_analysis
     from agents.prediction_agent import run_prediction
     from agents.comparison_agent import run_comparison
+    from agents.chat_agent import get_ai_response, prepare_context
     AGENTS_LOADED = True
 except ImportError as e:
     st.error(f"⚠️ Agent modules not found: {e}")
@@ -36,20 +37,18 @@ except ImportError as e:
 
 # --- 1. Page Configuration & Custom CSS ---
 st.set_page_config(
-    page_title="Nexus AI | Enterprise Product Intelligence",
+    page_title="MARS AI | Multi-agent Retail Security System",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Enhanced Professional CSS
+# Enhanced Professional CSS (Fixed Colors)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
     
-    * {
-        font-family: 'Inter', sans-serif;
-    }
+    * { font-family: 'Inter', sans-serif; }
     
     .stApp {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -59,6 +58,20 @@ st.markdown("""
         padding-top: 2rem;
         padding-bottom: 2rem;
         max-width: 1400px;
+    }
+    
+    /* --- UI CORRECTIONS FOR CONTRAST --- */
+    h1, h2, h3 { color: white !important; }
+    p { color: #f1f5f9; }
+    
+    /* Input Fields in Sidebar - Fix Text Color */
+    .stTextInput input {
+        color: #ffffff !important;
+        background-color: rgba(255, 255, 255, 0.15) !important; 
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    }
+    .stTextInput label {
+        color: #e2e8f0 !important;
     }
     
     /* Hero Section */
@@ -72,17 +85,9 @@ st.markdown("""
         position: relative;
         overflow: hidden;
     }
-    
-    .hero-container::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 5px;
-        background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
-    }
-    
+    .hero-container h2 { color: #1e293b !important; }
+    .hero-container p { color: #64748b !important; }
+
     .hero-title {
         font-size: 3.5rem;
         font-weight: 700;
@@ -93,24 +98,6 @@ st.markdown("""
         line-height: 1.2;
     }
     
-    .hero-subtitle {
-        font-size: 1.3rem;
-        color: #64748b;
-        margin-bottom: 30px;
-        line-height: 1.6;
-    }
-    
-    .hero-badge {
-        display: inline-block;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 8px 20px;
-        border-radius: 50px;
-        font-size: 0.9rem;
-        font-weight: 600;
-        margin: 10px 5px;
-    }
-    
     /* Feature Cards */
     .feature-card {
         background: white;
@@ -119,174 +106,9 @@ st.markdown("""
         height: 100%;
         box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         transition: all 0.3s ease;
-        border: 2px solid transparent;
     }
-    
-    .feature-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
-        border-color: #667eea;
-    }
-    
-    .feature-icon {
-        font-size: 3rem;
-        margin-bottom: 20px;
-        display: block;
-    }
-    
-    .feature-title {
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 15px;
-    }
-    
-    .feature-desc {
-        color: #64748b;
-        line-height: 1.6;
-        font-size: 1rem;
-    }
-    
-    /* Sidebar Styling */
-    section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-    }
-    
-    section[data-testid="stSidebar"] > div {
-        padding-top: 2rem;
-    }
-    
-    section[data-testid="stSidebar"] h1 {
-        color: #ffffff !important;
-        font-size: 2rem !important;
-        font-weight: 700 !important;
-        margin-bottom: 0 !important;
-    }
-    
-    section[data-testid="stSidebar"] .stCaption {
-        color: #94a3b8 !important;
-        font-size: 0.9rem !important;
-    }
-    
-    section[data-testid="stSidebar"] label {
-        color: #e2e8f0 !important;
-        font-weight: 600 !important;
-    }
-    
-    section[data-testid="stSidebar"] input {
-        background-color: rgba(255,255,255,0.1) !important;
-        border: 1px solid rgba(255,255,255,0.2) !important;
-        color: white !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Button Styling */
-    .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        padding: 0.75rem 2rem;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: 1.1rem;
-        width: 100%;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-    }
-    
-    /* Metrics */
-    div[data-testid="stMetricValue"] {
-        font-size: 2.5rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    
-    div[data-testid="metric-container"] {
-        background: white;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-        background-color: white;
-        padding: 10px;
-        border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 10px;
-        padding: 10px 20px;
-        font-weight: 600;
-        color: #64748b;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    
-    /* Status Container */
-    div[data-testid="stStatus"] {
-        background: white;
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    }
-    
-    /* Info/Warning Boxes */
-    .stAlert {
-        border-radius: 15px;
-        border: none;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-    }
-    
-    /* Results Header */
-    .results-header {
-        background: white;
-        padding: 30px;
-        border-radius: 15px;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    }
-    
-    .results-title {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 10px;
-    }
-    
-    /* Deal Card */
-    .deal-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 30px;
-        border-radius: 15px;
-        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3);
-        margin-bottom: 20px;
-    }
-    
-    .deal-badge {
-        background: rgba(255,255,255,0.2);
-        padding: 5px 15px;
-        border-radius: 20px;
-        display: inline-block;
-        font-size: 0.9rem;
-        font-weight: 600;
-        margin-bottom: 15px;
-    }
+    .feature-title { color: #1e293b !important; font-weight: 700; font-size: 1.4rem; margin-bottom: 15px; }
+    .feature-desc { color: #64748b !important; line-height: 1.6; }
     
     /* Stats Grid */
     .stat-box {
@@ -296,32 +118,51 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 5px 15px rgba(0,0,0,0.08);
     }
+    .stat-label { color: #64748b !important; font-size: 0.9rem; }
     
-    .stat-number {
+    /* Results Header */
+    .results-header {
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    .results-title {
         font-size: 2rem;
         font-weight: 700;
-        color: #667eea;
+        color: #1e293b !important;
+        margin-bottom: 10px;
     }
-    
-    .stat-label {
-        color: #64748b;
-        font-size: 0.9rem;
-        margin-top: 5px;
+    .results-header p { color: #64748b !important; }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+        background-color: white;
+        padding: 10px;
+        border-radius: 15px;
     }
-    
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-    
-    ::-webkit-scrollbar-track {
-        background: #f1f5f9;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .stTabs [data-baseweb="tab"] {
         border-radius: 10px;
+        padding: 10px 20px;
+        font-weight: 600;
+        color: #64748b;
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    /* Chat Interface */
+    .stChatMessage {
+        background-color: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 15px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    div[data-testid="stChatMessageContent"] p {
+        color: #1e293b !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -337,23 +178,28 @@ if 'ran_analysis' not in st.session_state:
     st.session_state.historic_report_df = pd.DataFrame()
     st.session_state.deals_df = pd.DataFrame()
     st.session_state.importance_df = pd.DataFrame()
+    
+# Initialize Chat History
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 # --- 3. Sidebar ---
 with st.sidebar:
-    st.title("🎯 Nexus AI")
+    st.title("🎯 MARS AI")
     st.caption("Enterprise Intelligence Platform")
     st.markdown("---")
     
     # Secure Input Section
     with st.expander("🔑 API Configuration", expanded=True):
         st.markdown("##### Authentication")
-        api_key = st.text_input("SerpApi Key", type="password", help="Required for live market data")
-        price_api_key = st.text_input("Price API Key", type="password", help="Optional: Historical tracking")
-
+        api_key = st.text_input("SerpApi Key", type="password", help="Required for data")
+        groq_api_key = st.text_input("Groq API Key", type="password", help="Required for Chatbot") # <--- NEW INPUT
+        price_api_key = st.text_input("Price API Key", type="password", help="Optional: Historical")
+        
     st.markdown("### 🔍 Search Configuration")
     product_query = st.text_input(
         "Product Query", 
-        "gold chain for men", 
+        "iphone 17 pro 256 gb", 
         placeholder="e.g., MacBook Pro M3, Sony WH-1000XM5"
     )
     
@@ -572,10 +418,17 @@ else:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- TABS ---
-    tab_deals, tab_compare, tab_analysis, tab_history, tab_data = st.tabs([
-        "💎 Smart Deals", "⚖️ Seller Comparison", "📊 Market Analysis", "📈 Historical Data", "🗄️ Raw Dataset"
-    ])
+    # --- TABS (Added Chat Tab) --
+    # Change Line ~336 to this:
+    tab_deals, tab_compare, tab_analysis, tab_history, tab_chat, tab_data = st.tabs([
+    "💎 Smart Deals", 
+    "⚖️ Comparison", 
+    "📊 Analysis",
+    "📈 Historical Data",
+    "💬 AI Assistant", 
+    "🗄️ Raw Data"
+])
+# Result: ValueError: too many values to unpack (expected 5)
 
     # --- Tab 1: Smart Deals ---
     with tab_deals:
@@ -752,7 +605,50 @@ else:
         else:
             st.info("📌 Historical data not available. To enable this feature, provide a Price API key in the sidebar.")
 
-    # --- Tab 5: Raw Data ---
+    # --- Tab 5: AI CHAT ASSISTANT (NEW) ---
+    with tab_chat:
+        st.markdown("### 💬 Chat with your Data")
+        st.caption("Ask questions like: 'What is the cheapest item?', 'Is there a good deal for under 5000?', 'Compare Amazon and Flipkart prices'.")
+        
+        # Container for chat history
+        chat_container = st.container()
+        
+        # Display chat messages
+        with chat_container:
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+        # Chat Input
+        if prompt := st.chat_input("Ask Nexus AI about the market data..."):
+            # 1. Add user message to state
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            # 2. Generate Response
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    # Prepare context on the fly
+                    context_str = prepare_context(
+                        st.session_state.clean_data,
+                        st.session_state.deals_df,
+                        st.session_state.cheapest_df
+                    )
+                    
+                    response = get_ai_response(
+                        prompt, 
+                        context_str, 
+                        groq_api_key,
+                        st.session_state.messages
+                    )
+                    
+                    st.markdown(response)
+            
+            # 3. Add assistant response to state
+            st.session_state.messages.append({"role": "assistant", "content": response})
+    
+    # --- Tab 6: Raw Data ---
     with tab_data:
         st.markdown("### 🗄️ Complete Dataset")
         st.caption("All scraped and processed data for further analysis")
