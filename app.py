@@ -23,22 +23,6 @@ try:
     AGENTS_LOADED = True
 except ImportError as e:
     st.error(f"⚠️ Agent modules not found: {e}")
-    st.info("""
-    **Please ensure your directory structure looks like this:**
-    ```
-    your_project/
-    ├── app.py
-    ├── .env
-    └── agents/
-        ├── __init__.py
-        ├── scraper_agent.py
-        ├── analysis_agent.py
-        ├── prediction_agent.py
-        └── comparison_agent.py
-    ```
-    
-    **Quick fix:** Create an empty `__init__.py` file in the agents folder.
-    """)
     AGENTS_LOADED = False
 
 # --- Load API Keys from Environment Variables ---
@@ -46,60 +30,108 @@ api_key = os.getenv("SERPAPI_KEY", "")
 groq_api_key = os.getenv("GROQ_API_KEY", "")
 price_api_key = os.getenv("PRICE_API_KEY", "")
 
-# --- 1. Page Configuration & Custom CSS ---
+# --- 1. Page Configuration & Enhanced Dark Theme CSS ---
 st.set_page_config(
     page_title="MARS AI | Multi-agent Retail Security System",
-    page_icon="🎯",
+    page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Enhanced Professional CSS (Fixed Colors)
+# Enhanced Professional Dark Theme (Inspired by Stock Analysis UI)
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
-    * { font-family: 'Inter', sans-serif; }
+    * { 
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
     
+    /* --- DARK THEME BASE --- */
     .stApp {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1a2332 0%, #2d3748 100%);
     }
     
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
-        max-width: 1400px;
+        max-width: 1600px;
     }
     
-    /* --- UI CORRECTIONS FOR CONTRAST --- */
-    h1, h2, h3 { color: white !important; }
-    li { color: black; }
-    p { color: #f1f5f9; }
+    /* --- TYPOGRAPHY --- */
+    h1, h2, h3, h4 { 
+        color: #f7fafc !important;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+    }
     
-    /* Input Fields in Sidebar - Fix Text Color */
+    p, li, span { 
+        color: #cbd5e0 !important;
+        line-height: 1.6;
+    }
+    
+    /* --- SIDEBAR STYLING --- */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1e2836 0%, #2a3441 100%);
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    section[data-testid="stSidebar"] h1 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Input Fields */
     .stTextInput input {
-        color: #ffffff !important;
-        background-color: rgba(255, 255, 255, 0.15) !important; 
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
-    }
-    .stTextInput label {
-        color: #e2e8f0 !important;
+        background-color: rgba(45, 55, 72, 0.6) !important;
+        border: 1px solid rgba(102, 126, 234, 0.3) !important;
+        color: #f7fafc !important;
+        border-radius: 8px;
+        padding: 0.75rem;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
     }
     
-    /* Hero Section */
+    .stTextInput input:focus {
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .stTextInput label {
+        color: #cbd5e0 !important;
+        font-weight: 500;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* --- HERO SECTION (DARK CARDS) --- */
     .hero-container {
-        background: white;
-        border-radius: 20px;
+        background: linear-gradient(135deg, #2d3748 0%, #1a2332 100%);
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        border-radius: 16px;
         padding: 60px 40px;
         text-align: center;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
         margin-bottom: 40px;
         position: relative;
         overflow: hidden;
     }
-    .hero-container h2 { color: #1e293b !important; }
-    .hero-container p { color: #64748b !important; }
-
+    
+    .hero-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #667eea, #764ba2, transparent);
+    }
+    
     .hero-title {
         font-size: 3.5rem;
         font-weight: 700;
@@ -111,7 +143,7 @@ st.markdown("""
     }
     
     .hero-subtitle {
-        color: #64748b !important;
+        color: #a0aec0 !important;
         font-size: 1.2rem;
         margin: 20px 0;
         line-height: 1.6;
@@ -119,109 +151,317 @@ st.markdown("""
     
     .hero-badge {
         display: inline-block;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white !important;
+        background: rgba(102, 126, 234, 0.15);
+        border: 1px solid rgba(102, 126, 234, 0.3);
+        color: #a5b4fc !important;
         padding: 8px 16px;
         border-radius: 20px;
         margin: 5px;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: 600;
+        backdrop-filter: blur(10px);
     }
     
-    /* Feature Cards */
+    /* --- FEATURE CARDS (DARK) --- */
     .feature-card {
-        background: white;
-        border-radius: 15px;
+        background: linear-gradient(135deg, #2d3748 0%, #1a2332 100%);
+        border: 1px solid rgba(102, 126, 234, 0.15);
+        border-radius: 12px;
         padding: 30px;
         height: 100%;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
     }
+    
+    .feature-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-5px);
+        border-color: rgba(102, 126, 234, 0.4);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
+    }
+    
+    .feature-card:hover::before {
+        opacity: 1;
+    }
+    
     .feature-icon {
         font-size: 3rem;
         display: block;
         margin-bottom: 15px;
+        filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.5));
     }
-    .feature-title { color: #1e293b !important; font-weight: 700; font-size: 1.4rem; margin-bottom: 15px; }
-    .feature-desc { color: #64748b !important; line-height: 1.6; }
     
-    /* Stats Grid */
+    .feature-title { 
+        color: #f7fafc !important;
+        font-weight: 700;
+        font-size: 1.3rem;
+        margin-bottom: 15px;
+    }
+    
+    .feature-desc { 
+        color: #a0aec0 !important;
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+    
+    /* --- STATS GRID (DARK) --- */
     .stat-box {
-        background: white;
-        padding: 20px;
+        background: linear-gradient(135deg, #2d3748 0%, #1a2332 100%);
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        padding: 25px;
         border-radius: 12px;
         text-align: center;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
     }
+    
+    .stat-box:hover {
+        transform: translateY(-3px);
+        border-color: rgba(102, 126, 234, 0.4);
+    }
+    
     .stat-number {
         font-size: 2.5rem;
         font-weight: 700;
-        color: #667eea !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         margin-bottom: 5px;
     }
-    .stat-label { color: #64748b !important; font-size: 0.9rem; }
     
-    /* Results Header */
-    .results-header {
-        background: white;
-        padding: 30px;
-        border-radius: 15px;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    .stat-label { 
+        color: #a0aec0 !important;
+        font-size: 0.9rem;
+        font-weight: 500;
     }
+    
+    /* --- RESULTS HEADER (DARK) --- */
+    .results-header {
+        background: linear-gradient(135deg, #2d3748 0%, #1a2332 100%);
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        padding: 30px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    
     .results-title {
         font-size: 2rem;
         font-weight: 700;
-        color: #1e293b !important;
+        color: #f7fafc !important;
         margin-bottom: 10px;
     }
-    .results-header p { color: #64748b !important; }
-
-    /* Tabs */
+    
+    .results-header p { 
+        color: #a0aec0 !important;
+    }
+    
+    /* --- METRICS/KPI CARDS --- */
+    div[data-testid="stMetric"] {
+        background: linear-gradient(135deg, #2d3748 0%, #1a2332 100%);
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    div[data-testid="stMetric"] label {
+        color: #a0aec0 !important;
+        font-size: 0.9rem;
+    }
+    
+    div[data-testid="stMetric"] > div {
+        color: #f7fafc !important;
+    }
+    
+    /* --- TABS (DARK) --- */
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
-        background-color: black;
+        background: linear-gradient(135deg, #1a2332 0%, #2d3748 100%);
         padding: 10px;
-        border-radius: 15px;
+        border-radius: 12px;
+        border: 1px solid rgba(102, 126, 234, 0.1);
     }
+    
     .stTabs [data-baseweb="tab"] {
-        border-radius: 10px;
-        padding: 10px 20px;
+        border-radius: 8px;
+        padding: 12px 24px;
         font-weight: 600;
-        color: #64748b;
+        color: #a0aec0;
+        transition: all 0.3s ease;
+        border: 1px solid transparent;
     }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        background: rgba(102, 126, 234, 0.1);
+        color: #cbd5e0;
+    }
+    
     .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        border-color: rgba(102, 126, 234, 0.3);
+    }
+    
+    /* --- DATAFRAMES (DARK) --- */
+    div[data-testid="stDataFrame"] {
+        background: #1a2332 !important;
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    /* --- CHAT INTERFACE (DARK) --- */
+    .stChatMessage {
+        background: linear-gradient(135deg, #2d3748 0%, #1a2332 100%);
+        border: 1px solid rgba(102, 126, 234, 0.15);
+        border-radius: 12px;
+        padding: 15px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        margin-bottom: 10px;
+    }
+    
+    div[data-testid="stChatMessageContent"] p {
+        color: #e2e8f0 !important;
+    }
+    
+    /* Chat Input */
+    .stChatInputContainer {
+        border-top: 1px solid rgba(102, 126, 234, 0.2);
+        background: #1a2332;
+        padding: 15px;
+    }
+    
+    /* --- BUTTONS --- */
+    .stButton button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
     }
     
-    /* Chat Interface */
-    .stChatMessage {
-        background-color: rgba(255, 255, 255, 0.95);
-        border-radius: 15px;
-        padding: 15px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    }
-    div[data-testid="stChatMessageContent"] p {
-        color: #1e293b !important;
+    .stButton button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
     
-    /* API Status Badge */
+    /* --- API STATUS BADGES --- */
     .api-status {
         display: inline-block;
-        padding: 5px 12px;
+        padding: 6px 14px;
         border-radius: 20px;
         font-size: 0.85rem;
         font-weight: 600;
         margin: 5px 5px 5px 0;
     }
+    
     .api-connected {
-        background: #10b981;
-        color: white;
+        background: rgba(16, 185, 129, 0.2);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        color: #6ee7b7 !important;
     }
+    
     .api-missing {
-        background: #ef4444;
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        color: #fca5a5 !important;
+    }
+    
+    /* --- DEAL CARD (HIGHLIGHTED) --- */
+    .deal-card {
+        background: linear-gradient(135deg, #2d3748 0%, #1a2332 100%);
+        border: 2px solid #667eea;
+        border-radius: 16px;
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .deal-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+    
+    .deal-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white !important;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-bottom: 15px;
+    }
+    
+    /* --- EXPANDER (DARK) --- */
+    .streamlit-expanderHeader {
+        background: rgba(45, 55, 72, 0.5);
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        border-radius: 8px;
+        color: #e2e8f0 !important;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        background: rgba(45, 55, 72, 0.7);
+        border-color: rgba(102, 126, 234, 0.3);
+    }
+    
+    /* --- SCROLLBAR (DARK) --- */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #1a2332;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 5px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    }
+    
+    /* --- DOWNLOAD BUTTON --- */
+    .stDownloadButton button {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+    
+    .stDownloadButton button:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -244,7 +484,7 @@ if "messages" not in st.session_state:
 
 # --- 3. Sidebar ---
 with st.sidebar:
-    st.title("🎯 MARS AI")
+    st.title("📈 MARS AI")
     st.caption("Enterprise Intelligence Platform")
     st.markdown("---")
     
@@ -288,44 +528,39 @@ PRICE_API_KEY=your_key_here""", language="bash")
     st.markdown("---")
     
     # Run pipeline on button click
-    if st.button("🚀 Deploy Intelligence System"):
+    if st.button("🚀 Deploy Intelligence System", use_container_width=True):
         if not AGENTS_LOADED:
-            st.error("❌ Cannot run: Agent modules not loaded. Please check the error message above.")
+            st.error("❌ Cannot run: Agent modules not loaded.")
         elif not api_key:
             st.error("🔒 SerpApi Key Required")
-            st.info("Add SERPAPI_KEY to your .env file. Get your free key at serpapi.com")
         elif not product_query:
             st.warning("⚠️ Enter a product to analyze")
         else:
             with st.status("🎯 Deploying Multi-Agent System...", expanded=True) as status:
                 try:
-                    # Agent 1
-                    st.write("🕵️ **Scraper Agent** • Scanning 100+ marketplaces...")
+                    st.write("🕵️ **Scraper Agent** • Scanning marketplaces...")
                     time.sleep(0.5)
                     st.session_state.raw_data = run_scraper(product_query, api_key)
                     if st.session_state.raw_data.empty:
                         status.update(label="❌ Scraping Failed", state="error")
-                        st.error("No products found. Try a different search query.")
+                        st.error("No products found.")
                         st.session_state.ran_analysis = False
                         st.stop()
                     st.write("✅ Retrieved live market data")
                     
-                    # Agent 2
-                    st.write("📊 **Analysis Agent** • Processing price trends...")
+                    st.write("📊 **Analysis Agent** • Processing trends...")
                     time.sleep(0.5)
                     st.session_state.clean_data, st.session_state.plots = \
                         run_analysis(st.session_state.raw_data, price_api_key)
                     st.write("✅ Market analysis complete")
                     
-                    # Agent 3
-                    st.write("🧠 **Prediction Agent** • Training neural networks...")
+                    st.write("🧠 **Prediction Agent** • Training models...")
                     time.sleep(0.5)
                     st.session_state.importance_df, st.session_state.deals_df = \
                         run_prediction(st.session_state.clean_data)
                     st.write("✅ Price models optimized")
                     
-                    # Agent 4
-                    st.write("⚖️ **Comparison Agent** • Benchmarking sellers...")
+                    st.write("⚖️ **Comparison Agent** • Benchmarking...")
                     time.sleep(0.5)
                     st.session_state.cheapest_df, st.session_state.seller_report_df, st.session_state.historic_report_df = \
                         run_comparison(st.session_state.clean_data)
@@ -336,8 +571,7 @@ PRICE_API_KEY=your_key_here""", language="bash")
                     
                 except Exception as e:
                     status.update(label="❌ Analysis Failed", state="error")
-                    st.error(f"Error during analysis: {str(e)}")
-                    st.exception(e)
+                    st.error(f"Error: {str(e)}")
                     st.session_state.ran_analysis = False
 
 # --- 4. Main Dashboard ---
@@ -444,7 +678,7 @@ if not st.session_state.ran_analysis:
     with col3:
         st.markdown("""
         <div class="stat-box">
-            <div class="stat-number">$1000+</div>
+            <div class="stat-number">₹1000+</div>
             <div class="stat-label">Avg. Savings</div>
         </div>
         <br>
@@ -458,11 +692,11 @@ if not st.session_state.ran_analysis:
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("""
     <div class="hero-container">
-        <h2 style="color: #1e293b; margin-bottom: 20px;">Ready to Get Started?</h2>
-        <p style="color: #64748b; font-size: 1.1rem; margin-bottom: 20px;">
+        <h2 style="color: #f7fafc; margin-bottom: 20px;">Ready to Get Started?</h2>
+        <p style="color: #a0aec0; font-size: 1.1rem; margin-bottom: 20px;">
             Configure your API credentials in the .env file and deploy your first intelligence mission.
         </p>
-        <p style="color: #94a3b8; font-size: 0.9rem;">
+        <p style="color: #718096; font-size: 0.9rem;">
             🔒 Your data is encrypted • ⚡ Results in seconds • 🎯 No credit card required
         </p>
     </div>
@@ -473,7 +707,7 @@ else:
     st.markdown(f"""
     <div class="results-header">
         <div class="results-title">📊 Intelligence Report: {product_query}</div>
-        <p style="color: #64748b; margin: 0;">Comprehensive market analysis powered by 4 autonomous AI agents</p>
+        <p style="color: #a0aec0; margin: 0;">Comprehensive market analysis powered by 4 autonomous AI agents</p>
     </div>
     """, unsafe_allow_html=True)
     
