@@ -3,6 +3,11 @@ import pandas as pd
 import time
 import sys
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add the project root to the Python path
 project_root = Path(__file__).parent
@@ -23,6 +28,7 @@ except ImportError as e:
     ```
     your_project/
     ├── app.py
+    ├── .env
     └── agents/
         ├── __init__.py
         ├── scraper_agent.py
@@ -34,6 +40,11 @@ except ImportError as e:
     **Quick fix:** Create an empty `__init__.py` file in the agents folder.
     """)
     AGENTS_LOADED = False
+
+# --- Load API Keys from Environment Variables ---
+api_key = os.getenv("SERPAPI_KEY", "")
+groq_api_key = os.getenv("GROQ_API_KEY", "")
+price_api_key = os.getenv("PRICE_API_KEY", "")
 
 # --- 1. Page Configuration & Custom CSS ---
 st.set_page_config(
@@ -164,6 +175,24 @@ st.markdown("""
     div[data-testid="stChatMessageContent"] p {
         color: #1e293b !important;
     }
+    
+    /* API Status Badge */
+    .api-status {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin: 5px 5px 5px 0;
+    }
+    .api-connected {
+        background: #10b981;
+        color: white;
+    }
+    .api-missing {
+        background: #ef4444;
+        color: white;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -189,12 +218,30 @@ with st.sidebar:
     st.caption("Enterprise Intelligence Platform")
     st.markdown("---")
     
-    # Secure Input Section
-    with st.expander("🔑 API Configuration", expanded=True):
-        st.markdown("##### Authentication")
-        api_key = st.text_input("SerpApi Key", type="password", help="Required for data")
-        groq_api_key = st.text_input("Groq API Key", type="password", help="Required for Chatbot") # <--- NEW INPUT
-        price_api_key = st.text_input("Price API Key", type="password", help="Optional: Historical")
+    # API Status Display
+    with st.expander("🔑 API Configuration Status", expanded=True):
+        st.markdown("##### Connection Status")
+        
+        if api_key:
+            st.markdown('<span class="api-status api-connected">✓ SerpApi Connected</span>', unsafe_allow_html=True)
+        else:
+            st.markdown('<span class="api-status api-missing">✗ SerpApi Missing</span>', unsafe_allow_html=True)
+        
+        if groq_api_key:
+            st.markdown('<span class="api-status api-connected">✓ Groq Connected</span>', unsafe_allow_html=True)
+        else:
+            st.markdown('<span class="api-status api-missing">✗ Groq Missing</span>', unsafe_allow_html=True)
+        
+        if price_api_key:
+            st.markdown('<span class="api-status api-connected">✓ Price API Connected</span>', unsafe_allow_html=True)
+        else:
+            st.markdown('<span class="api-status api-missing">○ Price API Optional</span>', unsafe_allow_html=True)
+        
+        st.markdown("---")
+        st.caption("📝 Configure keys in `.env` file:")
+        st.code("""SERPAPI_KEY=your_key_here
+GROQ_API_KEY=your_key_here
+PRICE_API_KEY=your_key_here""", language="bash")
         
     st.markdown("### 🔍 Search Configuration")
     product_query = st.text_input(
@@ -215,8 +262,8 @@ with st.sidebar:
         if not AGENTS_LOADED:
             st.error("❌ Cannot run: Agent modules not loaded. Please check the error message above.")
         elif not api_key:
-            st.error("🔒 API Key Required")
-            st.info("Get your free key at serpapi.com")
+            st.error("🔒 SerpApi Key Required")
+            st.info("Add SERPAPI_KEY to your .env file. Get your free key at serpapi.com")
         elif not product_query:
             st.warning("⚠️ Enter a product to analyze")
         else:
@@ -334,7 +381,7 @@ if not st.session_state.ran_analysis:
     
     # Benefits Section
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align: center; color: white; margin: 40px 0;'>💡 Why Choose Nexus AI?</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: white; margin: 40px 0;'>💡 Why Choose MARS AI?</h2>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     
@@ -383,7 +430,7 @@ if not st.session_state.ran_analysis:
     <div class="hero-container">
         <h2 style="color: #1e293b; margin-bottom: 20px;">Ready to Get Started?</h2>
         <p style="color: #64748b; font-size: 1.1rem; margin-bottom: 20px;">
-            Configure your API credentials in the sidebar and deploy your first intelligence mission.
+            Configure your API credentials in the .env file and deploy your first intelligence mission.
         </p>
         <p style="color: #94a3b8; font-size: 0.9rem;">
             🔒 Your data is encrypted • ⚡ Results in seconds • 🎯 No credit card required
@@ -418,17 +465,15 @@ else:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- TABS (Added Chat Tab) --
-    # Change Line ~336 to this:
+    # --- TABS ---
     tab_deals, tab_compare, tab_analysis, tab_history, tab_chat, tab_data = st.tabs([
-    "💎 Smart Deals", 
-    "⚖️ Comparison", 
-    "📊 Analysis",
-    "📈 Historical Data",
-    "💬 AI Assistant", 
-    "🗄️ Raw Data"
-])
-# Result: ValueError: too many values to unpack (expected 5)
+        "💎 Smart Deals", 
+        "⚖️ Comparison", 
+        "📊 Analysis",
+        "📈 Historical Data",
+        "💬 AI Assistant", 
+        "🗄️ Raw Data"
+    ])
 
     # --- Tab 1: Smart Deals ---
     with tab_deals:
@@ -603,50 +648,54 @@ else:
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.info("📌 Historical data not available. To enable this feature, provide a Price API key in the sidebar.")
+            st.info("📌 Historical data not available. To enable this feature, add PRICE_API_KEY to your .env file.")
 
-    # --- Tab 5: AI CHAT ASSISTANT (NEW) ---
+    # --- Tab 5: AI CHAT ASSISTANT ---
     with tab_chat:
         st.markdown("### 💬 Chat with your Data")
         st.caption("Ask questions like: 'What is the cheapest item?', 'Is there a good deal for under 5000?', 'Compare Amazon and Flipkart prices'.")
         
-        # Container for chat history
-        chat_container = st.container()
-        
-        # Display chat messages
-        with chat_container:
-            for message in st.session_state.messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-
-        # Chat Input
-        if prompt := st.chat_input("Ask Nexus AI about the market data..."):
-            # 1. Add user message to state
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            # 2. Generate Response
-            with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
-                    # Prepare context on the fly
-                    context_str = prepare_context(
-                        st.session_state.clean_data,
-                        st.session_state.deals_df,
-                        st.session_state.cheapest_df
-                    )
-                    
-                    response = get_ai_response(
-                        prompt, 
-                        context_str, 
-                        groq_api_key,
-                        st.session_state.messages
-                    )
-                    
-                    st.markdown(response)
+        # Check if Groq API key is available
+        if not groq_api_key:
+            st.warning("⚠️ Groq API key not found. Please add GROQ_API_KEY to your .env file to enable the AI assistant.")
+        else:
+            # Container for chat history
+            chat_container = st.container()
             
-            # 3. Add assistant response to state
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            # Display chat messages
+            with chat_container:
+                for message in st.session_state.messages:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
+
+            # Chat Input
+            if prompt := st.chat_input("Ask MARS AI about the market data..."):
+                # 1. Add user message to state
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+
+                # 2. Generate Response
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        # Prepare context on the fly
+                        context_str = prepare_context(
+                            st.session_state.clean_data,
+                            st.session_state.deals_df,
+                            st.session_state.cheapest_df
+                        )
+                        
+                        response = get_ai_response(
+                            prompt, 
+                            context_str, 
+                            groq_api_key,
+                            st.session_state.messages
+                        )
+                        
+                        st.markdown(response)
+                
+                # 3. Add assistant response to state
+                st.session_state.messages.append({"role": "assistant", "content": response})
     
     # --- Tab 6: Raw Data ---
     with tab_data:
@@ -665,7 +714,7 @@ else:
             st.download_button(
                 label="📥 Download Dataset as CSV",
                 data=csv,
-                file_name=f"nexus_ai_{product_query.replace(' ', '_')}.csv",
+                file_name=f"mars_ai_{product_query.replace(' ', '_')}.csv",
                 mime="text/csv",
                 use_container_width=True
             )
