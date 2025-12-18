@@ -109,6 +109,24 @@ st.markdown("""
         line-height: 1.2;
     }
     
+    .hero-subtitle {
+        color: #64748b !important;
+        font-size: 1.2rem;
+        margin: 20px 0;
+        line-height: 1.6;
+    }
+    
+    .hero-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white !important;
+        padding: 8px 16px;
+        border-radius: 20px;
+        margin: 5px;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    
     /* Feature Cards */
     .feature-card {
         background: white;
@@ -117,6 +135,11 @@ st.markdown("""
         height: 100%;
         box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         transition: all 0.3s ease;
+    }
+    .feature-icon {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 15px;
     }
     .feature-title { color: #1e293b !important; font-weight: 700; font-size: 1.4rem; margin-bottom: 15px; }
     .feature-desc { color: #64748b !important; line-height: 1.6; }
@@ -128,6 +151,12 @@ st.markdown("""
         border-radius: 12px;
         text-align: center;
         box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #667eea !important;
+        margin-bottom: 5px;
     }
     .stat-label { color: #64748b !important; font-size: 0.9rem; }
     
@@ -150,7 +179,7 @@ st.markdown("""
     /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
-        background-color: white;
+        background-color: black;
         padding: 10px;
         border-radius: 15px;
     }
