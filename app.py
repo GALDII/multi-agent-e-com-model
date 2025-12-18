@@ -73,6 +73,7 @@ st.markdown("""
     
     /* --- UI CORRECTIONS FOR CONTRAST --- */
     h1, h2, h3 { color: white !important; }
+    li { color: black; }
     p { color: #f1f5f9; }
     
     /* Input Fields in Sidebar - Fix Text Color */

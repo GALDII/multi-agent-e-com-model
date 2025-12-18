@@ -54,7 +54,7 @@ def get_ai_response(user_query, context, api_key, chat_history):
 
     client = Groq(api_key=api_key)
     
-    system_prompt = f"""You are 'Nexus AI', an expert shopping assistant. 
+    system_prompt = f"""You are 'MARS AI', an expert shopping assistant. 
     You have access to real-time market data provided below.
     
     {context}
@@ -78,7 +78,7 @@ def get_ai_response(user_query, context, api_key, chat_history):
     try:
         chat_completion = client.chat.completions.create(
             messages=messages,
-            model="llama3-70b-8192", # Using Llama 3 on Groq for speed
+            model="llama-3.1-8b-instant", # Updated to current supported model
             temperature=0.5,
             max_tokens=500,
         )
